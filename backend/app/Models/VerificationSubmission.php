@@ -11,4 +11,6 @@ class VerificationSubmission extends Model
     public function business() { return $this->belongsTo(Business::class); }
     public function documents() { return $this->hasMany(VerificationDocument::class); }
     public function histories() { return $this->hasMany(VerificationStatusHistory::class); }
+    public function submittedBy() { return $this->belongsTo(User::class, 'submitted_by'); }
+    public function reviewedBy() { return $this->belongsTo(User::class, 'reviewed_by'); }
 }
