@@ -2,22 +2,22 @@
 
 namespace Database\Seeders;
 
-use App\Admin\Models\Category;
-use App\Admin\Models\Company;
-use App\Admin\Models\Order;
-use App\Admin\Models\OrderItem;
-use App\Admin\Models\Product;
-use App\Admin\Models\ProductImage;
-use App\Admin\Models\ProductReview;
-use App\Admin\Models\Quotation;
-use App\Admin\Models\QuotationItem;
-use App\Admin\Models\RFQItem;
-use App\Admin\Models\RFQRequest;
-use App\Admin\Models\Shipment;
-use App\Admin\Models\ShipmentEvent;
-use App\Admin\Models\TradeCenterPost;
-use App\Models\User;
-use App\Admin\Models\ChatReport;
+use App\Models\category;
+use App\Models\chat_report;
+use App\Models\company;
+use App\Models\order;
+use App\Models\order_item;
+use App\Models\product;
+use App\Models\product_image;
+use App\Models\product_review;
+use App\Models\quotation;
+use App\Models\quotation_item;
+use App\Models\rfq_item;
+use App\Models\rfq_request;
+use App\Models\shipment;
+use App\Models\shipment_event;
+use App\Models\trade_center_post;
+use App\Models\user;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -26,23 +26,26 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // Users
-        $admin = User::create([
+        $admin = user::create([
             'name' => 'Admin Distribusi',
             'email' => 'admin@globaltrade.local',
             'password' => bcrypt('admin123'),
         ]);
+        $admin->forceFill(['role' => 'admin'])->save();
 
-        $moderator = User::create([
+        $moderator = user::create([
             'name' => 'Rina Wibowo',
             'email' => 'rina@globaltrade.local',
             'password' => bcrypt('moderator123'),
         ]);
+        $moderator->forceFill(['role' => 'moderator'])->save();
 
-        $editor = User::create([
+        $editor = user::create([
             'name' => 'Budi Santoso',
             'email' => 'budi@globaltrade.local',
             'password' => bcrypt('editor123'),
         ]);
+        $editor->forceFill(['role' => 'editor'])->save();
 
         $users = [$admin, $moderator, $editor];
 
@@ -57,7 +60,7 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($categories as &$cat) {
-            $cat['id'] = Category::create($cat)->id;
+            $cat['id'] = category::create($cat)->id;
         }
         unset($cat);
 
@@ -74,7 +77,7 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($companies as &$co) {
-            $co['id'] = Company::create($co)->id;
+            $co['id'] = company::create($co)->id;
         }
         unset($co);
 
@@ -91,24 +94,24 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($products as &$p) {
-            $cat = Category::where('slug', $p['category_slug'])->first();
+            $cat = category::where('slug', $p['category_slug'])->first();
             $co = $companies[array_rand($companies)];
             $p['category_id'] = $cat->id;
             $p['company_id'] = $co['id'];
             unset($p['category_slug']);
-            $product = Product::create($p);
+            $product = product::create($p);
             $p['id'] = $product->id;
 
             // Images
-            $imageUrls = [
+            $image_urls = [
                 'https://images.unsplash.com/photo-1596462507344-7f658b88800c?w=600',
                 'https://images.unsplash.com/photo-1596462507344-7f658b88800c?w=400',
             ];
-            foreach ($imageUrls as $i => $url) {
-                ProductImage::create([
+            foreach ($image_urls as $i => $url) {
+                product_image::create([
                     'product_id' => $product->id,
                     'url' => $url,
-                    'alt' => $product->name . ' gambar ' . ($i + 1),
+                    'alt' => $product->name.' gambar '.($i + 1),
                     'sort_order' => $i,
                     'is_primary' => $i === 0,
                 ]);
@@ -116,7 +119,7 @@ class DatabaseSeeder extends Seeder
 
             // Review
             if (isset($users[1])) {
-                ProductReview::create([
+                product_review::create([
                     'product_id' => $product->id,
                     'user_id' => $users[1]->id,
                     'rating' => 4,
@@ -137,12 +140,12 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($rfqs as &$r) {
-            $rfq = RFQRequest::create($r);
+            $rfq = rfq_request::create($r);
             $r['id'] = $rfq->id;
 
-            $productsForRFQ = Product::inRandomOrder()->limit(2)->get();
-            foreach ($productsForRFQ as $idx => $product) {
-                RFQItem::create([
+            $products_for_rfq = product::inRandomOrder()->limit(2)->get();
+            foreach ($products_for_rfq as $idx => $product) {
+                rfq_item::create([
                     'rfq_id' => $rfq->id,
                     'product_id' => $product->id,
                     'product_name' => $product->name,
@@ -157,19 +160,19 @@ class DatabaseSeeder extends Seeder
 
         // Quotations
         $quotations = [
-            ['supplier_company_id' => 1, 'importer_company_id' => 5, 'currency' => 'USD', 'validity_date' => date('Y-m-d', strtotime('+21 days')), 'status' => 'sent', 'expires_at' => date('Y-m-d', strtotime('+28 days')), 'notes' => 'Quotation kopi'],
-            ['supplier_company_id' => 2, 'importer_company_id' => 6, 'currency' => 'USD', 'validity_date' => date('Y-m-d', strtotime('+14 days')), 'status' => 'draft', 'expires_at' => date('Y-m-d', strtotime('+21 days')), 'notes' => 'Quotation teh'],
-            ['supplier_company_id' => 3, 'importer_company_id' => 7, 'currency' => 'USD', 'validity_date' => date('Y-m-d', strtotime('+30 days')), 'status' => 'accepted', 'expires_at' => date('Y-m-d', strtotime('+35 days')), 'notes' => 'Quotation minyak goreng'],
+            ['supplier_company_id' => 1, 'importer_company_id' => 5, 'currency' => 'USD', 'validity_date' => date('Y-m-d', strtotime('+21 days')), 'status' => 'sent', 'expires_at' => date('Y-m-d', strtotime('+28 days')), 'notes' => 'quotation kopi'],
+            ['supplier_company_id' => 2, 'importer_company_id' => 6, 'currency' => 'USD', 'validity_date' => date('Y-m-d', strtotime('+14 days')), 'status' => 'draft', 'expires_at' => date('Y-m-d', strtotime('+21 days')), 'notes' => 'quotation teh'],
+            ['supplier_company_id' => 3, 'importer_company_id' => 7, 'currency' => 'USD', 'validity_date' => date('Y-m-d', strtotime('+30 days')), 'status' => 'accepted', 'expires_at' => date('Y-m-d', strtotime('+35 days')), 'notes' => 'quotation minyak goreng'],
         ];
 
         foreach ($quotations as &$q) {
-            $quotation = Quotation::create($q);
+            $quotation = quotation::create($q);
             $q['id'] = $quotation->id;
 
-            $items = Product::inRandomOrder()->limit(2)->get();
+            $items = product::inRandomOrder()->limit(2)->get();
             foreach ($items as $idx => $product) {
                 $total = $product->price * rand(10, 50);
-                QuotationItem::create([
+                quotation_item::create([
                     'quotation_id' => $quotation->id,
                     'product_id' => $product->id,
                     'product_name' => $product->name,
@@ -185,20 +188,20 @@ class DatabaseSeeder extends Seeder
 
         // Orders
         $orders = [
-            ['transaction_no' => 'ORD-' . strtoupper(Str::random(6)), 'buyer_company_id' => 5, 'seller_company_id' => 1, 'order_date' => date('Y-m-d'), 'status' => 'confirmed', 'expected_delivery' => date('Y-m-d', strtotime('+7 days'))],
-            ['transaction_no' => 'ORD-' . strtoupper(Str::random(6)), 'buyer_company_id' => 6, 'seller_company_id' => 2, 'order_date' => date('Y-m-d', strtotime('-1 day')), 'status' => 'pending', 'expected_delivery' => date('Y-m-d', strtotime('+3 days'))],
-            ['transaction_no' => 'ORD-' . strtoupper(Str::random(6)), 'buyer_company_id' => 7, 'seller_company_id' => 3, 'order_date' => date('Y-m-d', strtotime('-2 days')), 'status' => 'shipped', 'expected_delivery' => date('Y-m-d', strtotime('+5 days'))],
-            ['transaction_no' => 'ORD-' . strtoupper(Str::random(6)), 'buyer_company_id' => 5, 'seller_company_id' => 4, 'order_date' => date('Y-m-d', strtotime('-3 days')), 'status' => 'delivered', 'expected_delivery' => date('Y-m-d', strtotime('-1 day'))],
+            ['transaction_no' => 'ORD-'.strtoupper(Str::random(6)), 'buyer_company_id' => 5, 'seller_company_id' => 1, 'order_date' => date('Y-m-d'), 'status' => 'confirmed', 'expected_delivery' => date('Y-m-d', strtotime('+7 days'))],
+            ['transaction_no' => 'ORD-'.strtoupper(Str::random(6)), 'buyer_company_id' => 6, 'seller_company_id' => 2, 'order_date' => date('Y-m-d', strtotime('-1 day')), 'status' => 'pending', 'expected_delivery' => date('Y-m-d', strtotime('+3 days'))],
+            ['transaction_no' => 'ORD-'.strtoupper(Str::random(6)), 'buyer_company_id' => 7, 'seller_company_id' => 3, 'order_date' => date('Y-m-d', strtotime('-2 days')), 'status' => 'shipped', 'expected_delivery' => date('Y-m-d', strtotime('+5 days'))],
+            ['transaction_no' => 'ORD-'.strtoupper(Str::random(6)), 'buyer_company_id' => 5, 'seller_company_id' => 4, 'order_date' => date('Y-m-d', strtotime('-3 days')), 'status' => 'delivered', 'expected_delivery' => date('Y-m-d', strtotime('-1 day'))],
         ];
 
         foreach ($orders as &$o) {
-            $order = Order::create($o);
+            $order = order::create($o);
             $o['id'] = $order->id;
 
-            $items = Product::inRandomOrder()->limit(2)->get();
+            $items = product::inRandomOrder()->limit(2)->get();
             foreach ($items as $idx => $product) {
                 $total = $product->price * rand(5, 30);
-                OrderItem::create([
+                order_item::create([
                     'order_id' => $order->id,
                     'product_id' => $product->id,
                     'product_name' => $product->name,
@@ -213,14 +216,14 @@ class DatabaseSeeder extends Seeder
 
         // Shipments
         $shipments = [
-            ['tracking_number' => 'CX-' . strtoupper(Str::random(6)), 'origin_city' => 'Ho Chi Minh', 'origin_country' => 'Viet Nam', 'destination_city' => 'Jakarta', 'destination_country' => 'Indonesia', 'estimated_arrival' => date('Y-m-d', strtotime('+4 days')), 'status' => 'in_transit', 'current_location' => 'Gi Bong'],
-            ['tracking_number' => 'CX-' . strtoupper(Str::random(6)), 'origin_city' => 'Hong Kong', 'origin_country' => 'Hong Kong', 'destination_city' => 'Makassar', 'destination_country' => 'Indonesia', 'estimated_arrival' => date('Y-m-d', strtotime('+6 days')), 'status' => 'pending', 'current_location' => null],
-            ['tracking_number' => 'CX-' . strtoupper(Str::random(6)), 'origin_city' => 'Singapura', 'origin_country' => 'Singapura', 'destination_city' => 'Jakarta', 'destination_country' => 'Indonesia', 'estimated_arrival' => date('Y-m-d', strtotime('+2 days')), 'status' => 'delivered', 'current_location' => 'Jakarta'],
-            ['tracking_number' => 'CX-' . strtoupper(Str::random(6)), 'origin_city' => 'Kuala Lumpur', 'origin_country' => 'Malaysia', 'destination_city' => 'Surabaya', 'destination_country' => 'Indonesia', 'estimated_arrival' => date('Y-m-d', strtotime('+8 days')), 'status' => 'exception', 'current_location' => 'Barat daya'],
+            ['tracking_number' => 'CX-'.strtoupper(Str::random(6)), 'origin_city' => 'Ho Chi Minh', 'origin_country' => 'Viet Nam', 'destination_city' => 'Jakarta', 'destination_country' => 'Indonesia', 'estimated_arrival' => date('Y-m-d', strtotime('+4 days')), 'status' => 'in_transit', 'current_location' => 'Gi Bong'],
+            ['tracking_number' => 'CX-'.strtoupper(Str::random(6)), 'origin_city' => 'Hong Kong', 'origin_country' => 'Hong Kong', 'destination_city' => 'Makassar', 'destination_country' => 'Indonesia', 'estimated_arrival' => date('Y-m-d', strtotime('+6 days')), 'status' => 'pending', 'current_location' => null],
+            ['tracking_number' => 'CX-'.strtoupper(Str::random(6)), 'origin_city' => 'Singapura', 'origin_country' => 'Singapura', 'destination_city' => 'Jakarta', 'destination_country' => 'Indonesia', 'estimated_arrival' => date('Y-m-d', strtotime('+2 days')), 'status' => 'delivered', 'current_location' => 'Jakarta'],
+            ['tracking_number' => 'CX-'.strtoupper(Str::random(6)), 'origin_city' => 'Kuala Lumpur', 'origin_country' => 'Malaysia', 'destination_city' => 'Surabaya', 'destination_country' => 'Indonesia', 'estimated_arrival' => date('Y-m-d', strtotime('+8 days')), 'status' => 'exception', 'current_location' => 'Barat daya'],
         ];
 
         foreach ($shipments as &$s) {
-            $shipment = Shipment::create($s);
+            $shipment = shipment::create($s);
             $s['id'] = $shipment->id;
 
             $events = [
@@ -238,7 +241,7 @@ class DatabaseSeeder extends Seeder
             }
 
             foreach ($events as $e) {
-                ShipmentEvent::create([
+                shipment_event::create([
                     'shipment_id' => $shipment->id,
                     'event' => $e['event'],
                     'occurred_at' => now(),
@@ -251,38 +254,38 @@ class DatabaseSeeder extends Seeder
         // Trade Center posts
         $posts = [
             ['type' => 'news', 'title' => 'Harga kopi naik di Eropa', 'content' => 'Harga kopi robusta mengalami kenaikan...',
-             'excerpt' => 'Berita pasar perdagangan internasional.', 'status' => 'published', 'published_at' => now(), 'scheduled_at' => null],
+                'excerpt' => 'Berita pasar perdagangan internasional.', 'status' => 'published', 'published_at' => now(), 'scheduled_at' => null],
             ['type' => 'export_guide', 'title' => 'Panduan ekspor kopi Indonesia', 'content' => 'Langkah-langkah ekspor kopi...',
-             'excerpt' => 'Panduan lengkap ekspor kopi ke Eropa.', 'status' => 'published', 'published_at' => now(), 'scheduled_at' => null],
+                'excerpt' => 'Panduan lengkap ekspor kopi ke Eropa.', 'status' => 'published', 'published_at' => now(), 'scheduled_at' => null],
             ['type' => 'import_guide', 'title' => 'Panduan impor minyak goreng', 'content' => 'Persiapan impor minyak goreng...',
-             'excerpt' => 'Panduan impor minyak goreng dari Malaysia.', 'status' => 'draft', 'published_at' => null, 'scheduled_at' => now()->addDay()],
+                'excerpt' => 'Panduan impor minyak goreng dari Malaysia.', 'status' => 'draft', 'published_at' => null, 'scheduled_at' => now()->addDay()],
             ['type' => 'country_profile', 'title' => 'Profil negara Malaysia', 'content' => 'Profil pasar Malaysia...',
-             'excerpt' => 'Profil ekonomi dan kemudahan perdagangan.', 'status' => 'published', 'published_at' => now(), 'scheduled_at' => null],
+                'excerpt' => 'Profil ekonomi dan kemudahan perdagangan.', 'status' => 'published', 'published_at' => now(), 'scheduled_at' => null],
             ['type' => 'glossary', 'title' => 'Istilah perdagangan internasional', 'content' => 'Definisi istilah-istilah perdagangan...',
-             'excerpt' => 'Kamus istilah perdagangan global.', 'status' => 'pending', 'published_at' => null, 'scheduled_at' => null],
+                'excerpt' => 'Kamus istilah perdagangan global.', 'status' => 'pending', 'published_at' => null, 'scheduled_at' => null],
             ['type' => 'event', 'title' => 'Event Ekspor Asia', 'content' => 'Agenda event perdagangan di Asia...',
-             'excerpt' => 'Event perdagangan internasional terbaru.', 'status' => 'scheduled', 'published_at' => null, 'scheduled_at' => now()->addDays(5)],
+                'excerpt' => 'Event perdagangan internasional terbaru.', 'status' => 'scheduled', 'published_at' => null, 'scheduled_at' => now()->addDays(5)],
         ];
 
         foreach ($posts as &$post) {
             $post['slug'] = Str::slug($post['title']);
             $post['author_id'] = $users[2]->id;
-            $saved = TradeCenterPost::create($post);
+            $saved = trade_center_post::create($post);
             $post['id'] = $saved->id;
         }
         unset($post);
 
         // Chat reports
         $reports = [
-            ['conversation_id' => 'conv_' . strtoupper(Str::random(6)), 'reported_user_name' => 'User B', 'reporter_name' => 'User A', 'reason' => 'spam', 'status' => 'pending'],
-            ['conversation_id' => 'conv_' . strtoupper(Str::random(6)), 'reported_user_name' => 'User C', 'reporter_name' => 'User A', 'reason' => 'harassment', 'status' => 'under_review'],
-            ['conversation_id' => 'conv_' . strtoupper(Str::random(6)), 'reported_user_name' => 'User D', 'reporter_name' => 'User B', 'reason' => 'fraud', 'status' => 'resolved'],
-            ['conversation_id' => 'conv_' . strtoupper(Str::random(6)), 'reported_user_name' => 'User E', 'reporter_name' => 'User C', 'reason' => 'inappropriate', 'status' => 'pending'],
+            ['conversation_id' => 'conv_'.strtoupper(Str::random(6)), 'reported_user_name' => 'user B', 'reporter_name' => 'user A', 'reason' => 'spam', 'status' => 'pending'],
+            ['conversation_id' => 'conv_'.strtoupper(Str::random(6)), 'reported_user_name' => 'user C', 'reporter_name' => 'user A', 'reason' => 'harassment', 'status' => 'under_review'],
+            ['conversation_id' => 'conv_'.strtoupper(Str::random(6)), 'reported_user_name' => 'user D', 'reporter_name' => 'user B', 'reason' => 'fraud', 'status' => 'resolved'],
+            ['conversation_id' => 'conv_'.strtoupper(Str::random(6)), 'reported_user_name' => 'user E', 'reporter_name' => 'user C', 'reason' => 'inappropriate', 'status' => 'pending'],
         ];
 
         foreach ($reports as &$rep) {
             $rep['moderator_id'] = $users[1]->id;
-            ChatReport::create($rep);
+            chat_report::create($rep);
         }
         unset($rep);
 
