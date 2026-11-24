@@ -1,3 +1,5 @@
 jalankan command berikut terlebih dahulu untuk persiapan:
-npm isntall
+untuk frontend :
+npm isntall 
+untuk backend :
 composer install
