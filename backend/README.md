@@ -57,3 +57,27 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## API authentication
+
+The API is available under `/api/v1`. Obtain a personal access token with
+`POST /api/v1/auth/login`, then send it on protected requests:
+
+```http
+Authorization: Bearer <token>
+Accept: application/json
+```
+
+Use `POST /api/v1/auth/logout` to revoke the current token and
+`GET /api/v1/auth/me` to retrieve the authenticated user's profile. Tokens expire
+after 24 hours by default; set `SANCTUM_EXPIRATION` to change the lifetime in
+minutes.
+
+API roles:
+
+- `admin`: manage companies, categories, products, RFQs, quotations, orders, and shipments.
+- `moderator`: view products, approve/reject/request product changes, and manage chat reports.
+- `editor`: manage Trade Center posts.
+
+The seeded development accounts have these roles. Change their sample passwords
+before using seeded accounts outside a local development environment.

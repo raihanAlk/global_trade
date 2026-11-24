@@ -2,26 +2,34 @@
 
 namespace App\Models;
 
-use Database\Factories\UserFactory;
+use Database\Factories\user_factory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class user extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens;
+    use HasFactory;
+    use Notifiable;
 
-    protected $fillable = ['name', 'email', 'country', 'role', 'account_status', 'password'];
+    protected $fillable = ['name', 'email', 'password'];
+
     protected $hidden = ['password', 'remember_token'];
 
-    protected function casts(): array
+    protected static function newFactory()
     {
-        return ['email_verified_at' => 'datetime', 'password' => 'hashed'];
+        return user_factory::new();
     }
 
-    public function memberships()
+    public function reviews()
     {
-        return $this->hasMany(BusinessMembership::class);
+        return $this->hasMany(product_review::class);
+    }
+
+    public function reports()
+    {
+        return $this->hasMany(chat_report::class, 'moderator_id');
     }
 }
