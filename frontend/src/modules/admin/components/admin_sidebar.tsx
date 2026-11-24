@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ElementType } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -38,7 +38,7 @@ type admin_sidebar_props = {
   collapsed: boolean;
 };
 
-// Icon untuk setiap menu utama
+// Icon untuk setiap menu utama.
 const menu_icons: Record<string, ElementType> = {
   dashboard: LayoutDashboard,
   admin_management: ShieldCheck,
@@ -65,7 +65,7 @@ const menu_icons: Record<string, ElementType> = {
   logout: LogOut,
 };
 
-// Icon untuk submenu
+// Icon untuk submenu.
 const submenu_icons: Record<string, ElementType> = {
   all_users: Users,
   all_businesses: Building2,
@@ -86,22 +86,39 @@ export default function AdminSidebar({
 }: admin_sidebar_props) {
   const pathname = usePathname();
 
-  // Menyimpan submenu yang sedang terbuka
-  const [expanded_menu, set_expanded_menu] = useState<string | null>(
-    "dashboard"
+  // Menyimpan submenu yang sedang terbuka.
+  const [expanded_menu, set_expanded_menu] = useState<string | null>(null);
+
+  // Mengambil menu berdasarkan role dan permission.
+  const menu_items = useMemo(
+    () => get_admin_menu(role, permissions),
+    [role, permissions]
   );
 
-  // Mengambil menu berdasarkan role dan permission
-  const menu_items = get_admin_menu(role, permissions);
+  // Memeriksa apakah URL cocok dengan halaman atau turunannya.
+  function is_path_active(href: string) {
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }
 
-  // Membuka atau menutup submenu
+  // Otomatis membuka submenu sesuai halaman yang sedang diakses.
+  useEffect(() => {
+    const active_parent = menu_items.find((item) =>
+      item.children?.some(
+        (child) => child.href && is_path_active(child.href)
+      )
+    );
+
+    set_expanded_menu(active_parent?.key ?? null);
+  }, [pathname, menu_items]);
+
+  // Membuka atau menutup submenu secara manual.
   function toggle_menu(menu_key: string) {
     set_expanded_menu((current) =>
       current === menu_key ? null : menu_key
     );
   }
 
-  // Mengatur warna Sidebar berdasarkan tema
+  // Mengatur warna sidebar berdasarkan tema.
   const sidebar_theme = dark_mode
     ? "border-gray-800 bg-gray-900 text-gray-200"
     : "border-gray-200 bg-white text-gray-700";
@@ -144,15 +161,17 @@ export default function AdminSidebar({
             !!item.children && item.children.length > 0;
 
           const is_child_active = item.children?.some(
-            (child) => child.href === pathname
+            (child) =>
+              child.href && is_path_active(child.href)
           );
 
           const is_active =
-            item.href === pathname || is_child_active;
+            (!!item.href && is_path_active(item.href)) ||
+            !!is_child_active;
 
           const is_expanded = expanded_menu === item.key;
 
-          // Menu yang memiliki submenu
+          // Menu yang memiliki submenu.
           if (has_children) {
             return (
               <div key={item.key}>
@@ -190,13 +209,13 @@ export default function AdminSidebar({
                 {!collapsed && is_expanded && (
                   <div className="ml-5 mt-1 space-y-1 border-l border-gray-200 pl-3 dark:border-gray-700">
                     {item.children?.map((child) => {
-                      // Mencegah Link menerima href undefined
+                      // Lewati submenu yang belum memiliki URL.
                       if (!child.href) return null;
 
                       const ChildIcon =
                         submenu_icons[child.key] || FileText;
 
-                      const child_active = pathname === child.href;
+                      const child_active = is_path_active(child.href);
 
                       return (
                         <Link
@@ -221,29 +240,34 @@ export default function AdminSidebar({
             );
           }
 
-          // Menu yang tidak memiliki submenu
-          return (
-            <Link
-              key={item.key}
-              href={item.href || "#"}
-              title={collapsed ? item.label : undefined}
-              className={`flex items-center rounded-lg py-2.5 text-sm transition ${
-                collapsed
-                  ? "justify-center px-2"
-                  : "gap-3 px-3"
-              } ${
-                is_active
-                  ? "bg-blue-50 font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300"
-                  : dark_mode
-                    ? "text-gray-300 hover:bg-gray-800"
-                    : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              <Icon size={19} />
+          // Menu tanpa submenu.
+          if (item.href) {
+            return (
+              <Link
+                key={item.key}
+                href={item.href}
+                title={collapsed ? item.label : undefined}
+                className={`flex items-center rounded-lg py-2.5 text-sm transition ${
+                  collapsed
+                    ? "justify-center px-2"
+                    : "gap-3 px-3"
+                } ${
+                  is_active
+                    ? "bg-blue-50 font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                    : dark_mode
+                      ? "text-gray-300 hover:bg-gray-800"
+                      : "text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                <Icon size={19} />
 
-              {!collapsed && <span>{item.label}</span>}
-            </Link>
-          );
+                {!collapsed && <span>{item.label}</span>}
+              </Link>
+            );
+          }
+
+          // Menu tanpa URL dan tanpa submenu tidak ditampilkan.
+          return null;
         })}
       </nav>
 
