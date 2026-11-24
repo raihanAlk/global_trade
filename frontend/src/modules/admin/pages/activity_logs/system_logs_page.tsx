@@ -6,13 +6,10 @@ import {
   Activity,
   AlertTriangle,
   AlertCircle,
-  CheckCircle2,
   Info,
   Download,
   Eye,
   Server,
-  X,
-  Clock,
   FileText,
 } from "lucide-react";
 

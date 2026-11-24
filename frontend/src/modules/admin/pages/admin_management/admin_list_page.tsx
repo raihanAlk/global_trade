@@ -84,7 +84,7 @@ const initial_staff_data: staff_member[] = [
   },
 ];
 
-export default function admin_list_page() {
+export default function AdminListPage() {
   // State utama halaman.
   const [staff_data, set_staff_data] =
     useState<staff_member[]>(initial_staff_data);
@@ -184,22 +184,22 @@ export default function admin_list_page() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 xl:space-y-6">
       {/* Page heading */}
       <section>
-        <p className="text-xs font-semibold uppercase tracking-wider text-blue-600">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-600 xl:text-xs">
           Platform Operations
         </p>
 
-        <h1 className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
+        <h1 className="mt-1 text-xl font-bold text-slate-900 dark:text-white xl:text-2xl">
           Admin Management
         </h1>
 
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 xl:text-sm">
           Provision internal staff with scoped roles and mandatory MFA.
         </p>
 
-        <div className="mt-3 flex flex-wrap gap-4 text-xs text-blue-600">
+        <div className="mt-2 flex flex-wrap gap-3 text-[10px] text-blue-600 xl:gap-5 xl:text-sm">
           <span className="cursor-pointer hover:underline">
             Verification Queue
           </span>
@@ -216,7 +216,7 @@ export default function admin_list_page() {
       </section>
 
       {/* Statistics */}
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-4 xl:gap-4">
         {[
           {
             label: "Internal staff",
@@ -243,17 +243,17 @@ export default function admin_list_page() {
         ].map((item) => (
           <div
             key={item.label}
-            className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900"
+            className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900 xl:rounded-xl xl:p-5"
           >
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 xl:text-sm">
               {item.label}
             </p>
 
-            <h2 className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
+            <h2 className="mt-1 text-lg font-bold text-slate-900 dark:text-white xl:mt-3 xl:text-2xl">
               {item.value}
             </h2>
 
-            <p className="mt-2 text-xs text-green-600">
+            <p className="mt-1 text-[9px] text-green-600 xl:mt-2 xl:text-xs">
               Sample data · vs last month
             </p>
           </div>
@@ -261,14 +261,14 @@ export default function admin_list_page() {
       </section>
 
       {/* Tabs and Invite button */}
-      <section className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap gap-4">
+      <section className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-3 xl:gap-6">
           {["Active staff", "Invitations", "Access reviews"].map((tab) => (
             <button
               key={tab}
               type="button"
               onClick={() => set_active_tab(tab)}
-              className={`border-b-2 pb-2 text-xs font-medium transition ${
+              className={`border-b-2 pb-1.5 text-[10px] font-medium transition xl:pb-3 xl:text-sm ${
                 active_tab === tab
                   ? "border-blue-600 text-blue-600"
                   : "border-transparent text-slate-400 hover:text-blue-600"
@@ -290,8 +290,8 @@ export default function admin_list_page() {
       </section>
 
       {/* Search and filters */}
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr]">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+      <section className="grid grid-cols-1 gap-2 md:grid-cols-[1.5fr_1fr] xl:gap-5">
+        <div className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900 xl:rounded-xl xl:p-5">
           <Input
             label="Search internal staff"
             placeholder="Search by name or role..."
@@ -301,16 +301,16 @@ export default function admin_list_page() {
           />
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-          <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+        <div className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900 xl:rounded-xl xl:p-5">
+          <p className="text-[10px] font-semibold text-slate-700 dark:text-slate-200 xl:text-sm">
             Filter results
           </p>
 
-          <div className="mt-3 flex flex-wrap gap-3">
+          <div className="mt-2 flex flex-wrap gap-2 xl:mt-3 xl:gap-3">
             <select
               value={country_filter}
               onChange={(event) => set_country_filter(event.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+              className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[10px] text-slate-600 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 sm:w-[145px] xl:px-3 xl:py-2 xl:text-sm"
             >
               <option>All countries</option>
               <option>Indonesia</option>
@@ -322,7 +322,7 @@ export default function admin_list_page() {
             <select
               value={status_filter}
               onChange={(event) => set_status_filter(event.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+              className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-[10px] text-slate-600 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 sm:w-[145px] xl:px-3 xl:py-2 xl:text-sm"
             >
               <option>All statuses</option>
               <option>Active</option>
@@ -333,22 +333,25 @@ export default function admin_list_page() {
       </section>
 
       {/* Staff table */}
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <div className="border-b border-slate-200 p-4 dark:border-slate-700">
-          <h2 className="text-sm font-semibold text-slate-800 dark:text-white">
+      <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 xl:rounded-xl">
+        <div className="border-b border-slate-200 px-3 py-2 dark:border-slate-700 xl:px-5 xl:py-4">
+          <h2 className="text-xs font-semibold text-slate-800 dark:text-white xl:text-base">
             {active_tab}
           </h2>
         </div>
 
         <div className="overflow-x-auto">
-          <Table className="min-w-[750px]">
+          <Table
+            className="min-w-[620px] xl:min-w-[800px]"
+            style={{ tableLayout: "fixed", width: "100%" }}
+          >
             <TableHeader>
               <TableRow>
-                <TableHead>Staff member</TableHead>
-                <TableHead>Role / Scope</TableHead>
-                <TableHead>MFA / Last Review</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead align="right">Action</TableHead>
+                <TableHead className="w-[18%]">Staff member</TableHead>
+                <TableHead className="w-[27%]">Role / Scope</TableHead>
+                <TableHead className="w-[23%]">MFA / Last Review</TableHead>
+                <TableHead className="w-[13%]">Status</TableHead>
+                <TableHead className="w-[19%]" align="right">Action</TableHead>
               </TableRow>
             </TableHeader>
 
@@ -390,9 +393,9 @@ export default function admin_list_page() {
                       align="right"
                       width="180px"
                       trigger={
-                        <span className="inline-flex cursor-pointer items-center rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+                        <span className="inline-flex cursor-pointer items-center text-[10px] font-medium text-slate-600 dark:text-slate-300 xl:text-sm">
                           Actions
-                          <span className="ml-2">⌄</span>
+                          <span className="ml-1">⌄</span>
                         </span>
                       }
                     >
@@ -421,37 +424,37 @@ export default function admin_list_page() {
           </Table>
         </div>
 
-        <div className="border-t border-slate-100 px-4 py-3 text-xs text-slate-400 dark:border-slate-700">
+        <div className="border-t border-slate-100 px-4 py-3 text-xs text-slate-400 dark:border-slate-700 xl:px-5 xl:py-4 xl:text-sm">
           Showing {filtered_staff.length} sample records · Scoped results
         </div>
       </section>
 
       {/* Information cards */}
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
-          <h3 className="text-sm font-semibold text-slate-800 dark:text-white">
+      <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:gap-5">
+        <div className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900 xl:rounded-xl xl:p-5">
+          <h3 className="text-xs font-semibold text-slate-800 dark:text-white xl:text-base">
             Staff onboarding
           </h3>
 
-          <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-[10px] leading-relaxed text-slate-500 dark:text-slate-400 xl:text-sm">
             Invite → scoped role → MFA enrollment → access review.
             Staff rights are separate from business membership.
           </p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
-          <h3 className="text-sm font-semibold text-slate-800 dark:text-white">
+        <div className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900 xl:rounded-xl xl:p-5">
+          <h3 className="text-xs font-semibold text-slate-800 dark:text-white xl:text-base">
             Privileged changes
           </h3>
 
-          <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-[10px] leading-relaxed text-slate-500 dark:text-slate-400 xl:text-sm">
             Re-authentication, reason, and audit are required for
             role changes. Revoke sessions when a staff role ends.
           </p>
         </div>
       </section>
 
-      <p className="text-center text-[10px] text-slate-400">
+      <p className="text-center text-[10px] text-slate-400 xl:text-xs">
         Concept UI · Fictional sample data · Access scoped to your permissions
       </p>
 

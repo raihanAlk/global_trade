@@ -79,12 +79,12 @@ export default function Dropdown({
         type="button"
         onClick={() => set_is_open((current) => !current)}
         aria-expanded={is_open}
-        className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+        className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800 xl:gap-2 xl:px-3 xl:py-2.5 xl:text-sm"
       >
         {trigger}
 
         <ChevronDown
-          size={15}
+          size={12}
           className={`transition-transform ${
             is_open ? "rotate-180" : ""
           }`}

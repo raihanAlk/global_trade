@@ -16,15 +16,17 @@ use App\Http\Controllers\rfq_request_controller;
 use App\Http\Controllers\shipment_controller;
 use App\Http\Controllers\shipment_event_controller;
 use App\Http\Controllers\trade_center_post_controller;
+use App\Http\Controllers\Api\AdminAuthController;
+use App\Http\Controllers\Api\AdminManagementController;
+use App\Http\Middleware\EnsureAdminApiToken;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
-    Route::post('auth/login', [auth_controller::class, 'login'])->middleware('throttle:5,1');
+    // Admin login (menggunakan api_token_hash)
+    Route::post('auth/login', [AdminAuthController::class, 'login'])->middleware('throttle:5,1');
 
+    // Authentication for the existing Sanctum-protected API
     Route::middleware('auth:sanctum')->group(function () {
-        Route::post('auth/logout', [auth_controller::class, 'logout']);
-        Route::get('auth/me', [auth_controller::class, 'me']);
-
         Route::middleware('role:admin')->group(function () {
             Route::apiResource('companies', company_controller::class);
             Route::apiResource('categories', category_controller::class);
@@ -108,5 +110,20 @@ Route::prefix('v1')->group(function () {
             Route::put('trade-center-posts/{post}/unschedule', [trade_center_post_controller::class, 'unschedule'])
                 ->name('trade-center-posts.unschedule');
         });
+    });
+
+    Route::middleware(EnsureAdminApiToken::class)->group(function () {
+        Route::post('auth/logout', [AdminAuthController::class, 'logout']);
+        Route::get('auth/me', [AdminAuthController::class, 'me']);
+
+        Route::get('dashboard', [AdminManagementController::class, 'dashboard']);
+        Route::get('users', [AdminManagementController::class, 'users']);
+        Route::get('users/{user}', [AdminManagementController::class, 'user']);
+        Route::put('users/{user}/status', [AdminManagementController::class, 'updateUserStatus']);
+        Route::get('businesses', [AdminManagementController::class, 'businesses']);
+        Route::get('businesses/{business}', [AdminManagementController::class, 'business']);
+        Route::get('verifications', [AdminManagementController::class, 'verifications']);
+        Route::get('verifications/{submission}', [AdminManagementController::class, 'verification']);
+        Route::put('verifications/{submission}', [AdminManagementController::class, 'updateVerification']);
     });
 });

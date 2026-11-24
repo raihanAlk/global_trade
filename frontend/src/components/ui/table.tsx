@@ -111,7 +111,7 @@ export function TableHead({
 }: table_head_props) {
   return (
     <th
-      className={`whitespace-nowrap px-5 py-3.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 ${className}`}
+      className={`whitespace-nowrap !px-2 !py-2 !text-[9px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 xl:!px-4 xl:!py-4 xl:!text-xs ${className}`}
       {...props}
     >
       {children}
@@ -127,7 +127,7 @@ export function TableCell({
 }: table_cell_props) {
   return (
     <td
-      className={`whitespace-nowrap px-5 py-4 text-sm text-gray-700 dark:text-gray-300 ${className}`}
+      className={`whitespace-nowrap !px-2 !py-1.5 !text-[10px] text-gray-700 dark:text-gray-300 xl:!px-4 xl:!py-3.5 xl:!text-sm ${className}`}
       {...props}
     >
       {children}

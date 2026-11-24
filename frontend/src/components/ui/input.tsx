@@ -42,7 +42,7 @@ export default function Input({
       {label && (
         <label
           htmlFor={input_id}
-          className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300"
+          className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300 xl:text-sm"
         >
           {label}
         </label>

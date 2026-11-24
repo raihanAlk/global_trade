@@ -36,6 +36,7 @@ type admin_sidebar_props = {
   permissions: string[];
   dark_mode: boolean;
   collapsed: boolean;
+  on_logout: () => void;
 };
 
 // Icon untuk setiap menu utama.
@@ -83,6 +84,7 @@ export default function AdminSidebar({
   permissions,
   dark_mode,
   collapsed,
+  on_logout,
 }: admin_sidebar_props) {
   const pathname = usePathname();
 
@@ -102,13 +104,22 @@ export default function AdminSidebar({
 
   // Otomatis membuka submenu sesuai halaman yang sedang diakses.
   useEffect(() => {
+    let cancelled = false;
     const active_parent = menu_items.find((item) =>
       item.children?.some(
-        (child) => child.href && is_path_active(child.href)
+        (child) =>
+          child.href &&
+          (pathname === child.href || pathname.startsWith(`${child.href}/`))
       )
     );
 
-    set_expanded_menu(active_parent?.key ?? null);
+    Promise.resolve().then(() => {
+      if (!cancelled) set_expanded_menu(active_parent?.key ?? null);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [pathname, menu_items]);
 
   // Membuka atau menutup submenu secara manual.
@@ -126,24 +137,24 @@ export default function AdminSidebar({
   return (
     <aside
       className={`${
-        collapsed ? "w-20" : "w-64"
+        collapsed ? "w-14 min-w-14" : "w-[20vw] min-w-[160px] max-w-[320px]"
       } ${sidebar_theme} flex min-h-screen shrink-0 flex-col border-r transition-all duration-300`}
     >
       {/* Brand Sidebar */}
       <div
-        className={`flex h-16 items-center border-b ${
+        className={`flex h-10 items-center border-b lg:h-14 xl:h-20 ${
           dark_mode ? "border-gray-800" : "border-gray-200"
-        } ${collapsed ? "justify-center px-2" : "px-5"}`}
+        } ${collapsed ? "justify-center px-1" : "px-3 xl:px-5"}`}
       >
         {collapsed ? (
-          <span className="text-xl font-bold text-blue-600">GT</span>
+          <span className="text-lg font-bold text-blue-600">GT</span>
         ) : (
           <div>
-            <h2 className="text-lg font-bold text-blue-600">
+            <h2 className="text-sm font-bold text-blue-600 lg:text-base xl:text-lg">
               GlobalTrade Hub
             </h2>
 
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-[9px] text-gray-500 dark:text-gray-400 xl:text-xs">
               {role === "super_admin"
                 ? "Super Administrator"
                 : "Administrator"}
@@ -153,25 +164,17 @@ export default function AdminSidebar({
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-2 xl:py-4">
         {menu_items.map((item) => {
           const Icon = menu_icons[item.key] || LayoutDashboard;
-
-          const has_children =
-            !!item.children && item.children.length > 0;
-
+          const has_children = !!item.children && item.children.length > 0;
           const is_child_active = item.children?.some(
-            (child) =>
-              child.href && is_path_active(child.href)
+            (child) => child.href && is_path_active(child.href)
           );
-
           const is_active =
-            (!!item.href && is_path_active(item.href)) ||
-            !!is_child_active;
-
+            (!!item.href && is_path_active(item.href)) || !!is_child_active;
           const is_expanded = expanded_menu === item.key;
 
-          // Menu yang memiliki submenu.
           if (has_children) {
             return (
               <div key={item.key}>
@@ -179,10 +182,10 @@ export default function AdminSidebar({
                   type="button"
                   onClick={() => toggle_menu(item.key)}
                   title={collapsed ? item.label : undefined}
-                  className={`flex w-full items-center rounded-lg py-2.5 text-sm transition ${
+                  className={`flex w-full items-center rounded-md py-2 text-[10px] transition lg:text-[13px] xl:py-2.5 xl:text-sm ${
                     collapsed
-                      ? "justify-center px-2"
-                      : "justify-between px-3"
+                      ? "justify-center px-1"
+                      : "justify-between px-2 xl:px-3"
                   } ${
                     is_active
                       ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
@@ -191,37 +194,36 @@ export default function AdminSidebar({
                         : "text-gray-600 hover:bg-gray-100"
                   }`}
                 >
-                  <span className="flex items-center gap-3">
-                    <Icon size={19} />
-
-                    {!collapsed && <span>{item.label}</span>}
+                  <span className="flex items-center gap-1.5">
+                    <Icon size={15} className="xl:h-[18px] xl:w-[18px]" />
+                    {!collapsed && (
+                      <span className="whitespace-nowrap">{item.label}</span>
+                    )}
                   </span>
-
                   {!collapsed &&
                     (is_expanded ? (
-                      <ChevronDown size={16} />
+                      <ChevronDown size={13} />
                     ) : (
-                      <ChevronRight size={16} />
+                      <ChevronRight
+                        size={15}
+                        className="xl:h-[18px] xl:w-[18px]"
+                      />
                     ))}
                 </button>
 
-                {/* Daftar submenu */}
                 {!collapsed && is_expanded && (
-                  <div className="ml-5 mt-1 space-y-1 border-l border-gray-200 pl-3 dark:border-gray-700">
+                  <div className="ml-3 mt-1 space-y-0.5 border-l border-gray-200 pl-2 dark:border-gray-700 xl:ml-4 xl:pl-3">
                     {item.children?.map((child) => {
-                      // Lewati submenu yang belum memiliki URL.
                       if (!child.href) return null;
 
-                      const ChildIcon =
-                        submenu_icons[child.key] || FileText;
-
+                      const ChildIcon = submenu_icons[child.key] || FileText;
                       const child_active = is_path_active(child.href);
 
                       return (
                         <Link
                           key={child.key}
                           href={child.href}
-                          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition ${
+                          className={`flex items-center gap-1.5 rounded-md px-2 py-2 text-[10px] transition lg:text-xs xl:gap-2 xl:px-2.5 xl:py-2.5 xl:text-sm ${
                             child_active
                               ? "bg-blue-50 font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300"
                               : dark_mode
@@ -229,7 +231,7 @@ export default function AdminSidebar({
                                 : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
                           }`}
                         >
-                          <ChildIcon size={16} />
+                          <ChildIcon size={14} className="xl:h-4 xl:w-4" />
                           <span>{child.label}</span>
                         </Link>
                       );
@@ -240,17 +242,33 @@ export default function AdminSidebar({
             );
           }
 
-          // Menu tanpa submenu.
+          if (item.key === "logout") {
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={on_logout}
+                title={collapsed ? item.label : undefined}
+                className={`flex w-full items-center rounded-md py-2 text-[10px] text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950 lg:text-[13px] xl:py-2.5 xl:text-sm ${
+                  collapsed ? "justify-center px-1" : "gap-1.5 px-2 xl:px-3"
+                }`}
+              >
+                <Icon size={15} className="xl:h-[18px] xl:w-[18px]" />
+                {!collapsed && (
+                  <span className="whitespace-nowrap">{item.label}</span>
+                )}
+              </button>
+            );
+          }
+
           if (item.href) {
             return (
               <Link
                 key={item.key}
                 href={item.href}
                 title={collapsed ? item.label : undefined}
-                className={`flex items-center rounded-lg py-2.5 text-sm transition ${
-                  collapsed
-                    ? "justify-center px-2"
-                    : "gap-3 px-3"
+                className={`flex items-center rounded-md py-2 text-[10px] transition lg:text-[13px] xl:py-2.5 xl:text-sm ${
+                  collapsed ? "justify-center px-1" : "gap-1.5 px-2 xl:px-3"
                 } ${
                   is_active
                     ? "bg-blue-50 font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300"
@@ -259,27 +277,25 @@ export default function AdminSidebar({
                       : "text-gray-600 hover:bg-gray-100"
                 }`}
               >
-                <Icon size={19} />
-
+                <Icon size={15} className="xl:h-[18px] xl:w-[18px]" />
                 {!collapsed && <span>{item.label}</span>}
               </Link>
             );
           }
 
-          // Menu tanpa URL dan tanpa submenu tidak ditampilkan.
           return null;
         })}
       </nav>
 
       {/* Footer Sidebar */}
       <div
-        className={`border-t p-4 ${
+        className={`border-t px-3 py-3 xl:px-5 xl:py-4 ${
           dark_mode ? "border-gray-800" : "border-gray-200"
         } ${collapsed ? "flex justify-center" : ""}`}
       >
         {collapsed ? (
           <div
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white"
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-[10px] font-semibold text-white xl:h-9 xl:w-9 xl:text-xs"
             title={
               role === "super_admin" ? "Super Admin" : "Admin"
             }
@@ -288,13 +304,13 @@ export default function AdminSidebar({
           </div>
         ) : (
           <div>
-            <p className="text-sm font-semibold">
+            <p className="text-[10px] font-semibold xl:text-sm">
               {role === "super_admin"
                 ? "Super Admin"
                 : "Administrator"}
             </p>
 
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-[9px] text-gray-500 dark:text-gray-400 xl:text-xs">
               GlobalTrade Hub
             </p>
           </div>

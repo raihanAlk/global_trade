@@ -7,6 +7,11 @@ export type admin_permission = {
 
 export const admin_permission_list: admin_permission[] = [
   {
+    key: "admin_management.view",
+    label: "Admin Management",
+    description: "Manage administrator accounts and access.",
+  },
+  {
     key: "user_management.view",
     label: "User Management",
     description: "View and manage platform users.",
@@ -67,8 +72,18 @@ export const admin_permission_list: admin_permission[] = [
     description: "View platform activity records.",
   },
   {
+    key: "chat_monitoring.view",
+    label: "Chat Monitoring",
+    description: "Review reported conversations and messages.",
+  },
+  {
     key: "role_permissions.view",
     label: "Admin Permissions",
     description: "Manage admin roles and permissions.",
+  },
+  {
+    key: "system_settings.view",
+    label: "System Settings",
+    description: "Manage system configuration.",
   },
 ];

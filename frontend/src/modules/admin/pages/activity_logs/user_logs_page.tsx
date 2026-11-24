@@ -8,7 +8,6 @@ import {
   Eye,
   User,
   Building2,
-  ShoppingBag,
   FileText,
   LogIn,
   Pencil,

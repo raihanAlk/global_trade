@@ -1,6 +1,6 @@
 
-import DashboardPage from "@/src/modules/admin/pages/dashboard_page";
+import { redirect } from "next/navigation";
 
 export default function admin_page() {
-  return <DashboardPage />;
+  redirect("/admin/admin_management/admin_list");
 }
