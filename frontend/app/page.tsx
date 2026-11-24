@@ -1,111 +1,139 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 type Section = "overview" | "users" | "businesses" | "verification";
-type User = { id: number; name: string; email: string; country: string; role: string; status: "Active" | "Inactive" | "Suspended"; joined: string };
-type Business = { id: number; name: string; country: string; type: string; registration: string; email: string; status: string };
-type Submission = { id: number; business: string; country: string; submitted: string; status: "Pending" | "In Review" | "Needs Information" | "Approved" | "Rejected" | "Suspended"; documents: string[]; note: string };
+type Admin = { id: number; name: string; email: string; country?: string; role: string };
+type UserRecord = { id: number; name: string; email: string; country?: string; role: string; account_status: string; created_at: string };
+type Business = { id: number; legal_name: string; display_name?: string; country: string; business_type?: string; registration_number?: string; email?: string; phone?: string; website?: string; address?: string; description?: string; verification_status: string; memberships_count?: number };
+type Document = { id: number; document_type: string; original_name: string; review_status: string; review_note?: string };
+type History = { id: number; from_status?: string; to_status: string; notes?: string; created_at: string; changed_by?: { name: string } };
+type Submission = { id: number; status: string; admin_notes?: string; request_message?: string; created_at: string; business: Business; documents: Document[]; histories: History[]; submitted_by?: { name: string; email: string } };
+type Page<T> = { data: T[]; current_page: number; last_page: number; total: number; per_page: number };
+type Dashboard = { users: number; active_users: number; businesses: number; pending_verifications: number; approved_businesses: number };
 
-const initialUsers: User[] = [
-  { id: 1, name: "Olivia Rhye", email: "olivia@acmecorp.com", country: "United States", role: "Importer", status: "Active", joined: "12 Nov 2026" },
-  { id: 2, name: "Phoenix Baker", email: "phoenix@globalparts.de", country: "Germany", role: "Exporter", status: "Active", joined: "10 Nov 2026" },
-  { id: 3, name: "Lana Steiner", email: "lana@nusantara.co.id", country: "Indonesia", role: "Importer", status: "Inactive", joined: "08 Nov 2026" },
-  { id: 4, name: "Demi Wilkinson", email: "demi@tradehub.jp", country: "Japan", role: "Exporter", status: "Active", joined: "05 Nov 2026" },
-  { id: 5, name: "Candice Wu", email: "candice@oceanic.sg", country: "Singapore", role: "Importer", status: "Suspended", joined: "02 Nov 2026" },
-];
-const initialBusinesses: Business[] = [
-  { id: 1, name: "Acme Corporation", country: "United States", type: "Manufacturer", registration: "US-8291042", email: "legal@acmecorp.com", status: "Approved" },
-  { id: 2, name: "Global Parts GmbH", country: "Germany", type: "Wholesaler", registration: "DE-HRB-44192", email: "office@globalparts.de", status: "Pending" },
-  { id: 3, name: "Nusantara Trading", country: "Indonesia", type: "Trading Company", registration: "AHU-009182", email: "hello@nusantara.co.id", status: "Needs Information" },
-  { id: 4, name: "Oceanic Supplies Pte Ltd", country: "Singapore", type: "Distributor", registration: "202611830K", email: "ops@oceanic.sg", status: "In Review" },
-];
-const initialSubmissions: Submission[] = [
-  { id: 1, business: "Global Parts GmbH", country: "Germany", submitted: "20 Nov 2026", status: "Pending", documents: ["Business registration certificate", "Tax certificate", "Director identity"], note: "" },
-  { id: 2, business: "Nusantara Trading", country: "Indonesia", submitted: "18 Nov 2026", status: "Needs Information", documents: ["NIB / Business license", "Director identity"], note: "Please upload a clearer copy of the business license." },
-  { id: 3, business: "Oceanic Supplies Pte Ltd", country: "Singapore", submitted: "17 Nov 2026", status: "In Review", documents: ["ACRA profile", "Tax certificate"], note: "" },
-  { id: 4, business: "Acme Corporation", country: "United States", submitted: "12 Nov 2026", status: "Approved", documents: ["Certificate of incorporation", "Tax certificate"], note: "All documents verified." },
-];
+const API = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api").replace(/\/$/, "");
+const statusLabel = (value: string) => value.replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-const navItems: { key: Section; label: string; icon: string }[] = [
-  { key: "overview", label: "Overview", icon: "▦" },
-  { key: "users", label: "User management", icon: "♙" },
-  { key: "businesses", label: "Business management", icon: "▤" },
-  { key: "verification", label: "Company verification", icon: "✓" },
-];
-
-function Pill({ children }: { children: string }) {
-  const value = children.toLowerCase().replaceAll(" ", "-");
-  return <span className={`pill pill-${value}`}>{children}</span>;
+async function request<T>(path: string, token: string, init: RequestInit = {}): Promise<T> {
+  const response = await fetch(`${API}${path}`, { ...init, headers: { Accept: "application/json", ...(init.body ? { "Content-Type": "application/json" } : {}), Authorization: `Bearer ${token}`, ...init.headers } });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.message || `Request gagal (${response.status})`);
+  return body as T;
 }
+
+function Badge({ value }: { value: string }) { return <span className={`pill pill-${value.toLowerCase().replaceAll("_", "-").replaceAll(" ", "-")}`}>{statusLabel(value)}</span>; }
 
 export default function Home() {
+  const [token, setToken] = useState("");
+  const [admin, setAdmin] = useState<Admin | null>(null);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
   const [section, setSection] = useState<Section>("overview");
-  const [users, setUsers] = useState(initialUsers);
-  const [businesses] = useState(initialBusinesses);
-  const [submissions, setSubmissions] = useState(initialSubmissions);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("All");
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+  const [users, setUsers] = useState<Page<UserRecord> | null>(null);
+  const [businesses, setBusinesses] = useState<Page<Business> | null>(null);
+  const [submissions, setSubmissions] = useState<Page<Submission> | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserRecord | null>(null);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
-  const [adminNote, setAdminNote] = useState("");
-  const [confirmUser, setConfirmUser] = useState<User | null>(null);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("All");
+  const [page, setPage] = useState(1);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   const [toast, setToast] = useState("");
 
-  const filteredUsers = useMemo(() => users.filter((u) => (u.name + u.email + u.country).toLowerCase().includes(search.toLowerCase()) && (filter === "All" || u.role === filter || u.status === filter || u.country === filter)), [users, search, filter]);
-  const filteredBusinesses = useMemo(() => businesses.filter((b) => (b.name + b.country + b.registration).toLowerCase().includes(search.toLowerCase()) && (filter === "All" || b.status === filter || b.country === filter)), [businesses, search, filter]);
-  const filteredSubmissions = useMemo(() => submissions.filter((s) => (s.business + s.country).toLowerCase().includes(search.toLowerCase()) && (filter === "All" || s.status === filter)), [submissions, search, filter]);
+  const notify = (message: string) => { setToast(message); window.setTimeout(() => setToast(""), 3000); };
+  const loadDashboard = useCallback(async (auth: string) => setDashboard(await request<Dashboard>("/admin/dashboard", auth)), []);
+  const loadList = useCallback(async (auth: string, target: Section, query: string, selectedFilter: string, currentPage: number) => {
+    const params = new URLSearchParams({ page: String(currentPage), per_page: "10" });
+    if (query.trim()) params.set("search", query.trim());
+    if (selectedFilter !== "All") params.set(target === "users" ? (["active", "inactive", "suspended"].includes(selectedFilter) ? "status" : selectedFilter === "Importer" || selectedFilter === "Exporter" ? "role" : "country") : target === "businesses" ? (["pending", "in_review", "needs_information", "approved", "rejected", "suspended"].includes(selectedFilter) ? "status" : "country") : "status", selectedFilter.toLowerCase().replaceAll(" ", "_"));
+    if (target === "users") setUsers(await request<Page<UserRecord>>(`/admin/users?${params}`, auth));
+    if (target === "businesses") setBusinesses(await request<Page<Business>>(`/admin/businesses?${params}`, auth));
+    if (target === "verification") setSubmissions(await request<Page<Submission>>(`/admin/verifications?${params}`, auth));
+  }, []);
 
-  function notify(message: string) { setToast(message); window.setTimeout(() => setToast(""), 2600); }
-  function changeSubmissionStatus(id: number, status: Submission["status"]) {
-    setSubmissions((items) => items.map((item) => item.id === id ? { ...item, status, note: adminNote || item.note } : item));
-    setSelectedSubmission((item) => item && item.id === id ? { ...item, status, note: adminNote || item.note } : item);
-    notify(`Submission ${status.toLowerCase()} successfully (demo).`);
-  }
+  useEffect(() => {
+    const saved = sessionStorage.getItem("gth_admin_token");
 
-  const pageTitle = navItems.find((item) => item.key === section)?.label ?? "Overview";
-  return (
-    <main className="app-shell">
-      <aside className="sidebar">
-        <div className="brand"><div className="brand-mark">G</div><div><b>GlobalTrade</b><small>HUB ADMIN</small></div></div>
-        <div className="workspace-label">WORKSPACE</div>
-        <nav>{navItems.map((item) => <button key={item.key} className={`nav-item ${section === item.key ? "active" : ""}`} onClick={() => { setSection(item.key); setSearch(""); setFilter("All"); }}><span className="nav-icon">{item.icon}</span>{item.label}{item.key === "verification" && <span className="nav-count">2</span>}</button>)}</nav>
-        <div className="sidebar-bottom"><div className="help-card"><div className="help-icon">?</div><b>Need help?</b><p>Visit the admin guide for tips and documentation.</p><button onClick={() => notify("Admin guide will be available soon.")}>View guide ↗</button></div><div className="admin-profile"><div className="avatar">AD</div><div><b>Admin Demo</b><small>Administrator</small></div><button className="more-button" aria-label="Profile menu" onClick={() => notify("Profile settings are not connected yet.")}>•••</button></div></div>
-      </aside>
+    if (saved) {
+      Promise.resolve().then(() => {
+        setToken(saved);
+      });
+    }
+  }, []);
+  useEffect(() => { if (!token) return; let cancelled = false; (async () => { try { const me = await request<{ user: Admin }>("/admin/me", token); if (cancelled) return; setAdmin(me.user); await loadDashboard(token); } catch { sessionStorage.removeItem("gth_admin_token"); setToken(""); setAdmin(null); } })(); return () => { cancelled = true; }; }, [token, loadDashboard]);
+  useEffect(() => {
+    if (!token || !admin || section === "overview") return;
 
-      <section className="main-area">
-        <header className="topbar"><div className="breadcrumbs">Workspace <span>/</span> <b>{pageTitle}</b></div><div className="top-actions"><span className="environment"><i /> Demo workspace</span><button className="icon-button" aria-label="Notifications" onClick={() => notify("You are all caught up.")}>♧</button><div className="avatar small-avatar">AD</div></div></header>
-        <div className="content">
-          <div className="page-heading"><div><div className="eyebrow">ADMINISTRATION / {section.toUpperCase()}</div><h1>{section === "overview" ? "Good morning, Admin" : pageTitle}</h1><p>{section === "overview" ? "Here’s what’s happening across your GlobalTrade Hub workspace." : section === "users" ? "Manage platform users, account access and user information." : section === "businesses" ? "Review registered businesses and their company profiles." : "Review submitted company documents and manage verification decisions."}</p></div>{section !== "overview" && <button className="secondary-button" onClick={() => { setSearch(""); setFilter("All"); }}>↻ Reset filters</button>}</div>
+    let cancelled = false;
 
-          {section === "overview" && <>
-            <div className="stat-grid"><Stat label="Total users" value="2,840" delta="12.8%" icon="♙" tone="blue" /><Stat label="Registered businesses" value="1,264" delta="8.2%" icon="▤" tone="purple" /><Stat label="Pending verification" value="24" delta="Needs attention" icon="◷" tone="orange" /><Stat label="Verified companies" value="892" delta="70.6% of total" icon="✓" tone="green" /></div>
-            <div className="overview-grid"><section className="panel"><div className="panel-heading"><div><h2>Verification queue</h2><p>Latest company submissions that need attention.</p></div><button className="text-button" onClick={() => setSection("verification")}>View all →</button></div><div className="table-wrap"><table><thead><tr><th>COMPANY</th><th>COUNTRY</th><th>SUBMITTED</th><th>STATUS</th></tr></thead><tbody>{submissions.slice(0, 4).map((s) => <tr key={s.id} onClick={() => setSelectedSubmission(s)} className="click-row"><td><b>{s.business}</b><small>Submission #{String(s.id).padStart(4, "0")}</small></td><td>{s.country}</td><td>{s.submitted}</td><td><Pill>{s.status}</Pill></td></tr>)}</tbody></table></div></section><section className="panel activity-panel"><div className="panel-heading"><div><h2>Quick actions</h2><p>Common administration tasks.</p></div></div><button className="quick-action" onClick={() => setSection("users")}><span className="quick-icon blue-bg">♙</span><span><b>Manage users</b><small>Review accounts and access</small></span><span className="arrow">→</span></button><button className="quick-action" onClick={() => setSection("businesses")}><span className="quick-icon purple-bg">▤</span><span><b>Browse businesses</b><small>View company profiles</small></span><span className="arrow">→</span></button><button className="quick-action" onClick={() => setSection("verification")}><span className="quick-icon orange-bg">✓</span><span><b>Review submissions</b><small>Process verification requests</small></span><span className="arrow">→</span></button><div className="tip-box"><b>Admin workspace tip</b><p>Always review company documents before approving a verification submission.</p></div></section></div>
-          </>}
+    Promise.resolve().then(() => {
+      if (cancelled) return;
 
-          {section !== "overview" && <section className="panel data-panel"><div className="toolbar"><div className="search-box"><span>⌕</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={section === "users" ? "Search name, email or country..." : section === "businesses" ? "Search company, country or registration..." : "Search company or country..."} /></div><select value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Filter records"><option>All</option>{(section === "users" ? ["Importer", "Exporter", "Active", "Inactive", "Suspended"] : section === "businesses" ? ["Pending", "In Review", "Needs Information", "Approved", "Rejected", "Suspended"] : ["Pending", "In Review", "Needs Information", "Approved", "Rejected", "Suspended"]).map((v) => <option key={v}>{v}</option>)}</select><span className="result-count">{section === "users" ? filteredUsers.length : section === "businesses" ? filteredBusinesses.length : filteredSubmissions.length} results</span></div>
-            <div className="table-wrap"><table><thead>{section === "users" ? <tr><th>USER</th><th>COUNTRY</th><th>ROLE</th><th>DATE JOINED</th><th>ACCOUNT STATUS</th><th></th></tr> : section === "businesses" ? <tr><th>BUSINESS</th><th>COUNTRY</th><th>BUSINESS TYPE</th><th>REGISTRATION NO.</th><th>VERIFICATION</th><th></th></tr> : <tr><th>COMPANY / SUBMISSION</th><th>COUNTRY</th><th>SUBMITTED</th><th>DOCUMENTS</th><th>STATUS</th><th></th></tr>}</thead><tbody>
-              {section === "users" && filteredUsers.map((u) => <tr key={u.id}><td><div className="person-cell"><div className="avatar table-avatar">{u.name.split(" ").map((x) => x[0]).join("")}</div><span><b>{u.name}</b><small>{u.email}</small></span></div></td><td>{u.country}</td><td><span className="role-tag">{u.role}</span></td><td>{u.joined}</td><td><Pill>{u.status}</Pill></td><td><button className="row-action" onClick={() => setSelectedUser(u)}>View details ↗</button></td></tr>)}
-              {section === "businesses" && filteredBusinesses.map((b) => <tr key={b.id}><td><b>{b.name}</b><small>Business ID #{String(b.id).padStart(5, "0")}</small></td><td>{b.country}</td><td>{b.type}</td><td className="mono">{b.registration}</td><td><Pill>{b.status}</Pill></td><td><button className="row-action" onClick={() => setSelectedBusiness(b)}>View details ↗</button></td></tr>)}
-              {section === "verification" && filteredSubmissions.map((s) => <tr key={s.id}><td><b>{s.business}</b><small>Submission #{String(s.id).padStart(4, "0")}</small></td><td>{s.country}</td><td>{s.submitted}</td><td>{s.documents.length} files</td><td><Pill>{s.status}</Pill></td><td><button className="row-action" onClick={() => { setSelectedSubmission(s); setAdminNote(s.note); }}>Review ↗</button></td></tr>)}
-              {((section === "users" && filteredUsers.length === 0) || (section === "businesses" && filteredBusinesses.length === 0) || (section === "verification" && filteredSubmissions.length === 0)) && <tr><td colSpan={6} className="empty-state">No records match your search.</td></tr>}
-            </tbody></table></div><div className="table-footer"><span>Showing {section === "users" ? filteredUsers.length : section === "businesses" ? filteredBusinesses.length : filteredSubmissions.length} records</span><div><button disabled>← Previous</button><button className="current-page">1</button><button disabled>Next →</button></div></div>
-          </section>}
-          <footer className="footer">© 2026 GlobalTrade Hub <span>Admin workspace · Internal use only</span></footer>
-        </div>
-      </section>
+      setBusy(true);
+      setError("");
 
-      {(selectedUser || selectedBusiness || selectedSubmission) && <div className="modal-backdrop" onClick={() => { setSelectedUser(null); setSelectedBusiness(null); setSelectedSubmission(null); }}><section className="detail-modal" onClick={(e) => e.stopPropagation()}><div className="modal-top"><div><div className="eyebrow">RECORD DETAILS</div><h2>{selectedUser?.name || selectedBusiness?.name || selectedSubmission?.business}</h2><p>{selectedUser ? "User account information" : selectedBusiness ? "Registered business profile" : `Verification submission #${String(selectedSubmission?.id).padStart(4, "0")}`}</p></div><button className="close-button" onClick={() => { setSelectedUser(null); setSelectedBusiness(null); setSelectedSubmission(null); }}>×</button></div>
-        {selectedUser && <><div className="detail-grid"><Detail label="Full name" value={selectedUser.name} /><Detail label="Email address" value={selectedUser.email} /><Detail label="Country" value={selectedUser.country} /><Detail label="Platform role" value={selectedUser.role} /><Detail label="Date joined" value={selectedUser.joined} /><Detail label="Account status" value={selectedUser.status} /></div><div className="modal-actions"><button className="secondary-button" onClick={() => setSelectedUser(null)}>Close</button><button className="primary-button" onClick={() => setConfirmUser(selectedUser)}>{selectedUser.status === "Active" ? "Deactivate account" : "Activate account"}</button></div></>}
-        {selectedBusiness && <><div className="detail-grid"><Detail label="Legal business name" value={selectedBusiness.name} /><Detail label="Country" value={selectedBusiness.country} /><Detail label="Business type" value={selectedBusiness.type} /><Detail label="Registration number" value={selectedBusiness.registration} /><Detail label="Business contact" value={selectedBusiness.email} /><Detail label="Verification status" value={selectedBusiness.status} /></div><div className="modal-actions"><button className="secondary-button" onClick={() => setSelectedBusiness(null)}>Close</button></div></>}
-        {selectedSubmission && <><div className="submission-status"><span>Current status</span><Pill>{selectedSubmission.status}</Pill></div><h3 className="section-subtitle">Submitted documents</h3><div className="document-list">{selectedSubmission.documents.map((doc) => <div className="document-row" key={doc}><span className="document-icon">▧</span><span><b>{doc}</b><small>Document preview is awaiting file upload integration</small></span><button onClick={() => notify("No document file is attached in this demo record.")}>Preview ↗</button></div>)}</div><h3 className="section-subtitle">Review checklist</h3><div className="checklist"><label><input type="checkbox" /> Legal business name matches the document</label><label><input type="checkbox" /> Registration number is valid</label><label><input type="checkbox" /> Documents are clear and readable</label><label><input type="checkbox" /> Business contact details are consistent</label></div><label className="field-label" htmlFor="admin-note">Admin notes / request message</label><textarea id="admin-note" value={adminNote} onChange={(e) => setAdminNote(e.target.value)} placeholder="Write review notes or additional information required..." /><div className="history-box"><b>Submission history</b><p>{selectedSubmission.submitted} · Submitted by business representative</p><p>Current status: {selectedSubmission.status}</p></div><div className="modal-actions wrap-actions"><button className="secondary-button" onClick={() => changeSubmissionStatus(selectedSubmission.id, "Needs Information")}>Request more information</button><button className="danger-button" onClick={() => changeSubmissionStatus(selectedSubmission.id, "Rejected")}>Reject</button><button className="primary-button" onClick={() => changeSubmissionStatus(selectedSubmission.id, "Approved")}>Approve company</button></div></>}
-      </section></div>}
-      {confirmUser && <div className="modal-backdrop" onClick={() => setConfirmUser(null)}><section className="confirm-modal" onClick={(e) => e.stopPropagation()}><div className="confirm-symbol">!</div><h2>Confirm account status change</h2><p>Are you sure you want to {confirmUser.status === "Active" ? "deactivate" : "activate"} <b>{confirmUser.name}</b>?</p><div className="modal-actions"><button className="secondary-button" onClick={() => setConfirmUser(null)}>Cancel</button><button className="primary-button" onClick={() => { const next = confirmUser.status === "Active" ? "Inactive" : "Active"; setUsers((items) => items.map((u) => u.id === confirmUser.id ? { ...u, status: next } : u)); setSelectedUser({ ...confirmUser, status: next }); setConfirmUser(null); notify(`Account ${next.toLowerCase()} (demo).`); }}>Confirm</button></div></section></div>}
-      {toast && <div className="toast">✓ {toast}</div>}
-    </main>
-  );
+      loadList(token, section, search, filter, page)
+        .catch((e: Error) => {
+          if (!cancelled) setError(e.message);
+        })
+        .finally(() => {
+          if (!cancelled) setBusy(false);
+        });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, admin, section, search, filter, page, loadList]);
+  async function login(event: FormEvent) { event.preventDefault(); setBusy(true); setLoginError(""); try { const result = await fetch(`${API}/admin/login`, { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json" }, body: JSON.stringify({ email: loginEmail, password: loginPassword }) }); const body = await result.json(); if (!result.ok) throw new Error(body.message || "Login gagal."); sessionStorage.setItem("gth_admin_token", body.token); setAdmin(body.user); setToken(body.token); setLoginPassword(""); } catch (e) { setLoginError(e instanceof Error ? e.message : "Tidak dapat menghubungi server."); } finally { setBusy(false); } }
+  async function logout() { try { await request("/admin/logout", token, { method: "POST" }); } catch { /* token may already be expired */ } sessionStorage.removeItem("gth_admin_token"); setToken(""); setAdmin(null); setDashboard(null); }
+  async function openUser(user: UserRecord) { try { const detail = await request<UserRecord>(`/admin/users/${user.id}`, token); setSelectedUser(detail); } catch (e) { notify(e instanceof Error ? e.message : "Gagal membuka pengguna."); } }
+  async function openBusiness(business: Business) { try { setSelectedBusiness(await request<Business>(`/admin/businesses/${business.id}`, token)); } catch (e) { notify(e instanceof Error ? e.message : "Gagal membuka perusahaan."); } }
+  async function openSubmission(item: Submission) { try { const detail = await request<Submission>(`/admin/verifications/${item.id}`, token); setSelectedSubmission(detail); setNote(detail.admin_notes || ""); } catch (e) { notify(e instanceof Error ? e.message : "Gagal membuka pengajuan."); } }
+  async function updateUserStatus(user: UserRecord) { const next = user.account_status === "active" ? "inactive" : "active"; if (!window.confirm(`Ubah status akun ${user.name} menjadi ${next}?`)) return; try { await request(`/admin/users/${user.id}/status`, token, { method: "PATCH", body: JSON.stringify({ status: next }) }); setSelectedUser({ ...user, account_status: next }); await loadList(token, "users", search, filter, page); notify("Status akun berhasil diperbarui."); } catch (e) { notify(e instanceof Error ? e.message : "Gagal memperbarui status."); } }
+  async function decide(status: string) { if (!selectedSubmission) return; if (!window.confirm(`Simpan keputusan ${statusLabel(status)} untuk ${selectedSubmission.business.legal_name}?`)) return; try { const result = await request<{ submission: Submission }>(`/admin/verifications/${selectedSubmission.id}`, token, { method: "PATCH", body: JSON.stringify({ status, admin_notes: note }) }); setSelectedSubmission(result.submission); await loadList(token, "verification", search, filter, page); await loadDashboard(token); notify("Keputusan verifikasi berhasil disimpan."); } catch (e) { notify(e instanceof Error ? e.message : "Gagal menyimpan keputusan."); } }
+  const pageTitle = useMemo(() => ({ overview: "Overview", users: "User management", businesses: "Business management", verification: "Company verification" }[section]), [section]);
+
+  if (!admin) return <main className="login-shell"><form className="login-card" onSubmit={login}><div className="brand login-brand"><div className="brand-mark">G</div><div><b>GlobalTrade</b><small>HUB ADMIN</small></div></div><div className="eyebrow">SECURE ADMINISTRATION</div><h1>Welcome back</h1><p>Sign in using your administrator account to manage GlobalTrade Hub.</p><label className="field-label" htmlFor="email">Email address</label><input id="email" type="email" autoComplete="username" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder="admin@example.com" /><label className="field-label" htmlFor="password">Password</label><input id="password" type="password" autoComplete="current-password" required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="Enter your password" />{loginError && <p className="form-error">{loginError}</p>}<button className="primary-button login-submit" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button><small className="login-hint">Admin access only · API: {API}</small></form></main>;
+
+  const rows = section === "users" ? users?.data || [] : section === "businesses" ? businesses?.data || [] : submissions?.data || [];
+  const pagination = section === "users" ? users : section === "businesses" ? businesses : submissions;
+  return <main className="app-shell"><aside className="sidebar"><div className="brand"><div className="brand-mark">G</div><div><b>GlobalTrade</b><small>HUB ADMIN</small></div></div><div className="workspace-label">WORKSPACE</div><nav>{([["overview", "Overview", "▦"], ["users", "User management", "♙"], ["businesses", "Business management", "▤"], ["verification", "Company verification", "✓"]] as [Section, string, string][]).map(([key, label, icon]) => <button key={key} className={`nav-item ${section === key ? "active" : ""}`} onClick={() => { setSection(key); setSearch(""); setFilter("All"); setPage(1); }}><span className="nav-icon">{icon}</span>{label}</button>)}</nav><div className="sidebar-bottom"><div className="admin-profile"><div className="avatar">{admin.name.split(" ").map(x => x[0]).slice(0, 2).join("")}</div><div><b>{admin.name}</b><small>{admin.email}</small></div><button className="more-button" onClick={logout} title="Logout">↪</button></div></div></aside>
+    <section className="main-area"><header className="topbar"><div className="breadcrumbs">Workspace <span>/</span> <b>{pageTitle}</b></div><div className="top-actions"><span className="environment"><i /> Live API</span><button className="secondary-button" onClick={logout}>Logout</button></div></header><div className="content"><div className="page-heading"><div><div className="eyebrow">ADMINISTRATION / {section.toUpperCase()}</div><h1>{section === "overview" ? `Good day, ${admin.name}` : pageTitle}</h1><p>{section === "overview" ? "Monitor users, businesses and company verification across the platform." : "Data ditampilkan langsung dari database GlobalTrade Hub."}</p></div>{section !== "overview" && <button className="secondary-button" onClick={() => { setSearch(""); setFilter("All"); setPage(1); }}>↻ Reset filters</button>}</div>
+      {error && <div className="api-error">{error}</div>}
+      {section === "overview" && <><div className="stat-grid"><Stat label="Total users" value={dashboard?.users ?? "—"} icon="♙" tone="blue" /><Stat label="Registered businesses" value={dashboard?.businesses ?? "—"} icon="▤" tone="purple" /><Stat label="Pending verification" value={dashboard?.pending_verifications ?? "—"} icon="◷" tone="orange" /><Stat label="Verified companies" value={dashboard?.approved_businesses ?? "—"} icon="✓" tone="green" /></div><section className="panel"><div className="panel-heading"><div><h2>Admin workspace</h2><p>Choose a module from the sidebar to manage live records.</p></div><button className="secondary-button" onClick={() => loadDashboard(token).then(() => notify("Dashboard diperbarui."))}>↻ Refresh</button></div><p>Active user accounts: <b>{dashboard?.active_users ?? "—"}</b></p></section></>}
+      {section !== "overview" && <section className="panel"><div className="table-toolbar"><input className="search-input" placeholder={section === "users" ? "Search name, email or country…" : "Search records…"} value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} /><select value={filter} onChange={e => { setFilter(e.target.value); setPage(1); }}><option value="All">All filters</option>{(section === "users" ? ["Importer", "Exporter", "active", "inactive", "suspended", "Indonesia", "United States", "Germany", "Japan", "Singapore"] : section === "businesses" ? ["pending", "in_review", "needs_information", "approved", "rejected", "suspended", "Indonesia", "United States", "Germany", "Japan", "Singapore"] : ["pending", "in_review", "needs_information", "approved", "rejected", "suspended"]).map(x => <option key={x} value={x}>{statusLabel(x)}</option>)}</select><span className="result-count">{pagination?.total ?? 0} results</span></div>{busy ? <div className="empty-state">Loading records…</div> : <div className="table-wrap"><table><thead><tr>{section === "users" ? <><th>USER</th><th>COUNTRY</th><th>ROLE</th><th>JOINED</th><th>ACCOUNT STATUS</th></> : section === "businesses" ? <><th>BUSINESS</th><th>COUNTRY</th><th>BUSINESS TYPE</th><th>REGISTRATION NO.</th><th>VERIFICATION</th></> : <><th>COMPANY / SUBMISSION</th><th>COUNTRY</th><th>SUBMITTED</th><th>DOCUMENTS</th><th>STATUS</th></>}</tr></thead><tbody>{section === "users" && (rows as UserRecord[]).map(u => <tr key={u.id}><td><b>{u.name}</b><small>{u.email}</small></td><td>{u.country || "—"}</td><td>{statusLabel(u.role)}</td><td>{new Date(u.created_at).toLocaleDateString()}</td><td><Badge value={u.account_status} /></td><td><button className="row-action" onClick={() => openUser(u)}>View details ↗</button></td></tr>)}{section === "businesses" && (rows as Business[]).map(b => <tr key={b.id}><td><b>{b.legal_name}</b><small>Business #{b.id}</small></td><td>{b.country}</td><td>{b.business_type || "—"}</td><td>{b.registration_number || "—"}</td><td><Badge value={b.verification_status} /></td><td><button className="row-action" onClick={() => openBusiness(b)}>View details ↗</button></td></tr>)}{section === "verification" && (rows as Submission[]).map(s => <tr key={s.id}><td><b>{s.business?.legal_name || "Business"}</b><small>Submission #{s.id}</small></td><td>{s.business?.country || "—"}</td><td>{new Date(s.created_at).toLocaleDateString()}</td><td>{s.documents?.length || 0} files</td><td><Badge value={s.status} /></td><td><button className="row-action" onClick={() => openSubmission(s)}>Review ↗</button></td></tr>)}</tbody></table>{rows.length === 0 && <div className="empty-state">No records found.</div>}</div>}<div className="table-footer"><span>Page {pagination?.current_page ?? 1} of {pagination?.last_page ?? 1} · {pagination?.total ?? 0} records</span><div><button disabled={!pagination || pagination.current_page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>← Previous</button><button className="current-page">{pagination?.current_page ?? 1}</button><button disabled={!pagination || pagination.current_page >= pagination.last_page} onClick={() => setPage(p => p + 1)}>Next →</button></div></div></section>}
+      <footer className="footer">© 2026 GlobalTrade Hub <span>Admin workspace · Internal use only</span></footer></div></section>
+    {(selectedUser || selectedBusiness || selectedSubmission) && <div className="modal-backdrop" onClick={() => { setSelectedUser(null); setSelectedBusiness(null); setSelectedSubmission(null); }}><section className="detail-modal" onClick={e => e.stopPropagation()}><div className="modal-top"><div><div className="eyebrow">RECORD DETAILS</div><h2>{selectedUser?.name || selectedBusiness?.legal_name || selectedSubmission?.business?.legal_name}</h2></div><button className="close-button" onClick={() => { setSelectedUser(null); setSelectedBusiness(null); setSelectedSubmission(null); }}>×</button></div>
+      {selectedUser && <><div className="detail-grid"><Detail label="Name" value={selectedUser.name} /><Detail label="Email" value={selectedUser.email} /><Detail label="Country" value={selectedUser.country || "—"} /><Detail label="Role" value={selectedUser.role} /><Detail label="Account status" value={selectedUser.account_status} /><Detail label="Joined" value={new Date(selectedUser.created_at).toLocaleString()} /></div><div className="modal-actions"><button className="secondary-button" onClick={() => setSelectedUser(null)}>Close</button><button className="primary-button" onClick={() => updateUserStatus(selectedUser)}>{selectedUser.account_status === "active" ? "Deactivate account" : "Activate account"}</button></div></>}
+      {selectedBusiness && <><div className="detail-grid">{(
+        [
+          ["Legal name", selectedBusiness.legal_name],
+          ["Display name", selectedBusiness.display_name],
+          ["Country", selectedBusiness.country],
+          ["Business type", selectedBusiness.business_type],
+          ["Registration number", selectedBusiness.registration_number],
+          ["Email", selectedBusiness.email],
+          ["Phone", selectedBusiness.phone],
+          ["Website", selectedBusiness.website],
+          ["Address", selectedBusiness.address],
+          ["Verification", selectedBusiness.verification_status],
+        ] as [string, string | undefined][]
+      ).map(([label, value]) => (
+        <Detail
+          key={label}
+          label={label}
+          value={value ?? "—"}
+        />
+      ))}</div><div className="modal-actions"><button className="secondary-button" onClick={() => setSelectedBusiness(null)}>Close</button></div></>}
+      {selectedSubmission && <><div className="submission-status"><span>Current status</span><Badge value={selectedSubmission.status} /></div><h3 className="section-subtitle">Submitted documents</h3><div className="document-list">{selectedSubmission.documents?.map(doc => <div className="document-row" key={doc.id}><span><b>{doc.document_type}</b><small>{doc.original_name} · {statusLabel(doc.review_status)}</small></span><a target="_blank" rel="noreferrer" href={`${API}/admin/verifications/${selectedSubmission.id}/documents/${doc.id}`} onClick={e => { e.preventDefault(); fetch(`${API}/admin/verifications/${selectedSubmission.id}/documents/${doc.id}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => { if (!r.ok) throw new Error("Dokumen tidak dapat dibuka."); return r.blob(); }).then(blob => { const url = URL.createObjectURL(blob); window.open(url, "_blank", "noopener,noreferrer"); }).catch(err => notify(err.message)); }}>Preview ↗</a></div>)}</div><h3 className="section-subtitle">Submission history</h3><div className="history-box">{selectedSubmission.histories?.length ? selectedSubmission.histories.map(h => <p key={h.id}>{new Date(h.created_at).toLocaleString()} · {h.from_status ? statusLabel(h.from_status) + " → " : ""}<b>{statusLabel(h.to_status)}</b>{h.notes ? ` · ${h.notes}` : ""}</p>) : <p>No status history recorded yet.</p>}</div><label className="field-label" htmlFor="review-note">Admin notes / request message</label><textarea id="review-note" value={note} onChange={e => setNote(e.target.value)} placeholder="Write review notes or additional information required…" /><div className="modal-actions wrap-actions"><button className="secondary-button" onClick={() => decide("needs_information")}>Request more information</button><button className="danger-button" onClick={() => decide("rejected")}>Reject</button><button className="primary-button" onClick={() => decide("approved")}>Approve company</button></div></>}
+    </section></div>}{toast && <div className="toast">✓ {toast}</div>}</main>;
 }
-
-function Stat({ label, value, delta, icon, tone }: { label: string; value: string; delta: string; icon: string; tone: string }) { return <div className="stat-card"><div className={`stat-icon ${tone}`}>{icon}</div><div className="stat-label">{label}</div><div className="stat-value">{value}</div><div className="stat-delta">↗ {delta}</div></div>; }
+function Stat({ label, value, icon, tone }: { label: string; value: string | number; icon: string; tone: string }) { return <div className="stat-card"><div className={`stat-icon ${tone}`}>{icon}</div><div className="stat-label">{label}</div><div className="stat-value">{value}</div></div>; }
 function Detail({ label, value }: { label: string; value: string }) { return <div className="detail-item"><span>{label}</span><b>{value}</b></div>; }
