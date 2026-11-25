@@ -24,9 +24,19 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
     // Admin login (menggunakan api_token_hash)
     Route::post('auth/login', [AdminAuthController::class, 'login'])->middleware('throttle:5,1');
+    // User authentication
+    Route::post('user/login', [auth_controller::class, 'login'])
+        ->middleware('throttle:5,1');
 
     // Authentication for the existing Sanctum-protected API
     Route::middleware('auth:sanctum')->group(function () {
+        // User profile and account
+        Route::get('user/me', [auth_controller::class, 'me']);
+
+        Route::put('user/profile', [auth_controller::class, 'update_profile']);
+
+        Route::post('user/change-password', [auth_controller::class, 'change_password']);
+        
         Route::middleware('role:admin')->group(function () {
             Route::apiResource('companies', company_controller::class);
             Route::apiResource('categories', category_controller::class);
