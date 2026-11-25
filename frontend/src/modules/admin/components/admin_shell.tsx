@@ -47,8 +47,10 @@ export default function AdminShell({
   // Mengatur mode Light dan Dark.
   const [dark_mode, set_dark_mode] = useState(false);
   const [theme_loaded, set_theme_loaded] = useState(false);
-  const [auth_checked, set_auth_checked] = useState(false);
-  const [auth_valid, set_auth_valid] = useState(false);
+  // Login connection is temporarily disabled:
+  // the admin shell renders the dashboard without requiring a token.
+  const [auth_checked, set_auth_checked] = useState(true);
+  const [auth_valid, set_auth_valid] = useState(true);
 
   // Role aktif, bisa diinisialisasi dari props atau default admin.
   const [current_role] = useState<admin_role>(role);
@@ -80,43 +82,7 @@ export default function AdminShell({
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    const token = sessionStorage.getItem("gth_admin_token");
-
-    if (!token) {
-      router.replace("/");
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    fetch(`${API}/v1/auth/me`, {
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Sesi admin tidak valid (${response.status}).`);
-        }
-        if (!cancelled) set_auth_valid(true);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          sessionStorage.removeItem("gth_admin_token");
-          router.replace("/");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) set_auth_checked(true);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [router]);
+  
 
   // Menyimpan tema dan mengatur class dark pada HTML.
   useEffect(() => {
